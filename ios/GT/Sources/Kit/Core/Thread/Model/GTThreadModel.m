@@ -33,6 +33,7 @@
 #import "GTThreadModel.h"
 #import "GT.h"
 #import "GTOutputList.h"
+#import "GTUtility.h"
 
 #include <mach/mach.h>
 #include <malloc/malloc.h>
@@ -67,10 +68,48 @@ M_GT_DEF_SINGLETION(GTThreadModel);
 }
 
 
+-(void)upLoadToServer
+{
+    //NSLog(@"upload CPU data to server ...");
+    
+    
+    //NSURL *url = [NSURL URLWithString:@"http://10.112.23.73:8086/db/testDB/series?u=root&p=root"];
+    NSURL *url = [NSURL URLWithString:InfluxServer];
+    //创建请求对象
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    UIDevice *device = [UIDevice currentDevice];
+    NSString  *currentDeviceId = [[device identifierForVendor]UUIDString];
+    
+    NSString *parmStr = [NSString stringWithFormat:@"cpu,uuid=%@,deviceName=%@ value=%.2f", currentDeviceId, device.name, cpu_usage];
+    // 将字符串转为NSData对象
+    NSData *pramData = [parmStr dataUsingEncoding:NSUTF8StringEncoding];
+    
+    [request setHTTPMethod:@"POST"];
+    [request setHTTPBody:pramData];
+    
+    
+    NSURLSession *session =[NSURLSession sharedSession];
+    
+    NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if(error) {
+            NSLog(@"upload data to influxDB fail");
+            
+        }
+    }];
+    
+    //启动任务
+    [dataTask resume];
+    
+
+}
+
 - (void)handleTick
 {
     [self getCpuUsage];
     GT_OUT_SET("App CPU", false, "%0.2f%%", cpu_usage);
+    [self upLoadToServer];
+    
 }
 
 - (float)getCpuUsage

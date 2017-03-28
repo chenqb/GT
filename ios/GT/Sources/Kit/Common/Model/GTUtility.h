@@ -32,6 +32,8 @@
 #import <Foundation/Foundation.h>
 #import "GTDebugDef.h"
 
+#define InfluxServer @"http://10.112.23.73:8086/write?db=testDB"
+
 @interface GTUtility : NSObject
 {
     double _systemVersion;

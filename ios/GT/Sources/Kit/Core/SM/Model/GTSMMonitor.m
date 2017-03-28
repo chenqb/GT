@@ -29,6 +29,7 @@
 
 #import "GTSMMonitor.h"
 #import <QuartzCore/QuartzCore.h>
+#import "GTUtility.h"
 
 @interface GTSMMonitor()
 
@@ -85,6 +86,44 @@ M_GT_DEF_SINGLETION(GTSMMonitor);
 }
 
 
+
+- (void)uploadToServer:(NSInteger)sm
+{
+    //NSLog(@"upload SM data to server ...");
+    
+    
+    //NSURL *url = [NSURL URLWithString:@"http://10.112.23.73:8086/db/testDB/series?u=root&p=root"];
+    NSURL *url = [NSURL URLWithString:InfluxServer];
+    //创建请求对象
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    UIDevice *device = [UIDevice currentDevice];
+    NSString  *currentDeviceId = [[device identifierForVendor]UUIDString];
+    
+    //NSString *parmStr = [NSString stringWithFormat:@"mem,uuid=%@ value=%@", currentDeviceId, data];
+    NSString *parmStr = [NSString stringWithFormat:@"sm,uuid=%@,deviceName=%@ value=%ld", currentDeviceId, device.name, sm];
+    // 将字符串转为NSData对象
+    NSData *pramData = [parmStr dataUsingEncoding:NSUTF8StringEncoding];
+    
+    [request setHTTPMethod:@"POST"];
+    [request setHTTPBody:pramData];
+    
+    
+    NSURLSession *session =[NSURLSession sharedSession];
+    
+    NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if(error) {
+            NSLog(@"upload data to influxDB fail");
+            
+        }
+    }];
+    
+    //启动任务
+    [dataTask resume];
+    
+}
+
+
 - (void)displayLinkProc {
     _historyCount += _displayLink.frameInterval;
     
@@ -95,6 +134,10 @@ M_GT_DEF_SINGLETION(GTSMMonitor);
 //        GT_OC_OUT_SET(@"App Smoothness", NO, text);
         
         GT_OUT_SET("App Smoothness", false, "%.0f", _historyCount/interval);
+        
+        NSInteger sm = _historyCount/interval;
+        [self uploadToServer:sm];
+        
         _historyCount = 0;
     }
 }

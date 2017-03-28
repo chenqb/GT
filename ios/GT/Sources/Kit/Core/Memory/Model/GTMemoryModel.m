@@ -21,6 +21,7 @@
 #import <sys/sysctl.h>
 #import <sys/mman.h>
 
+
 @interface GTMemoryModel()
 {
     NSUInteger          _appMemory;
@@ -89,7 +90,47 @@ M_GT_DEF_SINGLETION(GTMemoryModel)
 {
     _appMemory = [self getResidentMemory];
     [self updateOutputInfo];
+    [self uploadToServer];
     return;
+}
+
+- (void)uploadToServer
+{
+    //NSLog(@"upload MEM data to server ...");
+    
+    
+    //NSURL *url = [NSURL URLWithString:@"http://10.112.23.73:8086/db/testDB/series?u=root&p=root"];
+    NSURL *url = [NSURL URLWithString:InfluxServer];
+    //创建请求对象
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    //转化单位为 M
+    NSNumber *data = [NSNumber numberWithInteger:(int)((float)[self getResidentMemory]/1024/1024)];
+    
+    UIDevice *device = [UIDevice currentDevice];
+    NSString  *currentDeviceId = [[device identifierForVendor]UUIDString];
+    
+    NSString *parmStr = [NSString stringWithFormat:@"mem,uuid=%@,deviceName=%@ value=%@", currentDeviceId, device.name, data];
+    // 将字符串转为NSData对象
+    NSData *pramData = [parmStr dataUsingEncoding:NSUTF8StringEncoding];
+    
+    [request setHTTPMethod:@"POST"];
+    [request setHTTPBody:pramData];
+//    NSLog(@"%@",arr);
+
+    
+    NSURLSession *session =[NSURLSession sharedSession];
+    
+    NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+        if(error) {
+            NSLog(@"upload data to influxDB fail");
+            
+        }
+    }];
+    
+    //启动任务
+    [dataTask resume];
+    
 }
 
 - (void)updateOutputInfo
